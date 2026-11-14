@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4140c310b1ec4b298da471edb9301d61, type: 3}
+  m_Name: PaperAirplane
+  m_EditorClassIdentifier: Assembly-CSharp::XRProceduralCopilot.Procedure.ProcedureDefinition
+  procedureTitle: How to Make a Paper Airplane
+  steps:
+  - title: Create the Center Crease
+    instruction: Fold the paper in half lengthwise, then unfold it.
+    videoStartSeconds: 0
+    videoEndSeconds: 10
+  - title: Fold the Top Corners
+    instruction: Fold both top corners inward to meet the center crease.
+    videoStartSeconds: 10
+    videoEndSeconds: 20
+  - title: Create the Wings
+    instruction: Fold the paper in half along the center crease, then fold each side
+      down to form wings.
+    videoStartSeconds: 20
+    videoEndSeconds: 35
