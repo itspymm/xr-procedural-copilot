@@ -1,0 +1,39 @@
+{
+  "tutorial_id": "sample_test",
+  "title": "How to Wash Your Hands",
+  "video_url": "",
+  "steps": [
+    {
+      "step_number": 1,
+      "title": "Step 1",
+      "instruction": "Wet your hands with clean running water.",
+      "start_time": 0,
+      "end_time": 5,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 2,
+      "title": "Step 2",
+      "instruction": "Apply soap and rub your hands together, including between your fingers.",
+      "start_time": 5,
+      "end_time": 15,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 3,
+      "title": "Step 3",
+      "instruction": "Rinse your hands thoroughly with water.",
+      "start_time": 15,
+      "end_time": 25,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 4,
+      "title": "Step 4",
+      "instruction": "Dry your hands using a clean towel.",
+      "start_time": 25,
+      "end_time": 30,
+      "additional_guidance": ""
+    }
+  ]
+}
