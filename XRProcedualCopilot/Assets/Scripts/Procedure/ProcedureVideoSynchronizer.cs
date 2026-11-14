@@ -98,7 +98,7 @@ namespace XRProceduralCopilot.Procedure
             }
         }
 
-        private void HandleStepChanged(ProcedureStep step, int index)
+        private void HandleStepChanged(ProcedureStep step, int stepNumber)
         {
             if (controller == null)
                 return;
@@ -143,7 +143,7 @@ namespace XRProceduralCopilot.Procedure
             }
         }
 
-        private void HandleRepeatRequested(ProcedureStep step, int index)
+        private void HandleRepeatRequested(ProcedureStep step, int stepNumber)
         {
             if (controller == null)
                 return;
