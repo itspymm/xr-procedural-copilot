@@ -1,0 +1,32 @@
+
+{
+  "tutorial_id": "paper_airplane_01",
+  "title": "How to Make a Paper Airplane",
+  "video_url": "",
+  "steps": [
+    {
+      "step_number": 1,
+      "title": "Create the Center Crease",
+      "instruction": "Fold the paper in half lengthwise, then unfold it.",
+      "start_time": 0,
+      "end_time": 10,
+      "additional_guidance": "Press firmly along the fold."
+    },
+    {
+      "step_number": 2,
+      "title": "Fold the Top Corners",
+      "instruction": "Fold both top corners inward to meet the center crease.",
+      "start_time": 10,
+      "end_time": 20,
+      "additional_guidance": "Keep both sides symmetrical."
+    },
+    {
+      "step_number": 3,
+      "title": "Create the Wings",
+      "instruction": "Fold the paper in half along the center crease, then fold each side down to form wings.",
+      "start_time": 20,
+      "end_time": 35,
+      "additional_guidance": "Make both wings approximately equal in size."
+    }
+  ]
+}
