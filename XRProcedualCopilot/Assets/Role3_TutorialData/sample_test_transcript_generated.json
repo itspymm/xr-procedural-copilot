@@ -5,7 +5,7 @@
   "steps": [
     {
       "step_number": 1,
-      "title": "Step 1",
+      "title": "Wet your hands with clean running water",
       "instruction": "Wet your hands with clean running water.",
       "start_time": 0,
       "end_time": 5,
@@ -13,7 +13,7 @@
     },
     {
       "step_number": 2,
-      "title": "Step 2",
+      "title": "Apply soap and rub your hands together",
       "instruction": "Apply soap and rub your hands together, including between your fingers.",
       "start_time": 5,
       "end_time": 15,
@@ -21,7 +21,7 @@
     },
     {
       "step_number": 3,
-      "title": "Step 3",
+      "title": "Rinse your hands thoroughly with water",
       "instruction": "Rinse your hands thoroughly with water.",
       "start_time": 15,
       "end_time": 25,
@@ -29,7 +29,7 @@
     },
     {
       "step_number": 4,
-      "title": "Step 4",
+      "title": "Dry your hands using a clean towel",
       "instruction": "Dry your hands using a clean towel.",
       "start_time": 25,
       "end_time": 30,

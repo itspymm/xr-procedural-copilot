@@ -24,10 +24,12 @@ steps = []
 
 for number, match in enumerate(re.finditer(pattern, transcript), start=1):
     start_min, start_sec, end_min, end_sec, instruction = match.groups()
+    clean_instruction = " ".join(instruction.split())
+    step_title = clean_instruction.split(".")[0].split(",")[0][:45]
 
     steps.append({
         "step_number": number,
-        "title": f"Step {number}",
+        "title": step_title,
         "instruction": " ".join(instruction.split()),
         "start_time": int(start_min) * 60 + int(start_sec),
         "end_time": int(end_min) * 60 + int(end_sec),
