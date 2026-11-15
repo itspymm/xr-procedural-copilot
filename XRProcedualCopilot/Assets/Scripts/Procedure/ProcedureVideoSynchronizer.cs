@@ -13,6 +13,11 @@ namespace XRProceduralCopilot.Procedure
 
         private bool reachedCurrentStepEnd;
         private bool pendingSeek;
+        private bool seekInProgress;
+        private bool seekCompleted;
+        private bool seekFrameReady;
+        private double activeSeekTime;
+        private double renderedTime = -1d;
         private bool pendingPlay;
         private double pendingSeekTime;
         private bool durationWarningShown;
@@ -52,6 +57,9 @@ namespace XRProceduralCopilot.Procedure
             controller.StateChanged += HandleStateChanged;
             controller.RepeatRequested += HandleRepeatRequested;
             videoPlayer.prepareCompleted += HandleVideoPrepared;
+            videoPlayer.seekCompleted += HandleSeekCompleted;
+            videoPlayer.frameReady += HandleFrameReady;
+            videoPlayer.sendFrameReadyEvents = true;
             isSubscribed = true;
 
             if (controller.IsReady)
@@ -76,24 +84,29 @@ namespace XRProceduralCopilot.Procedure
             }
 
             if (videoPlayer != null)
+            {
                 videoPlayer.prepareCompleted -= HandleVideoPrepared;
+                videoPlayer.seekCompleted -= HandleSeekCompleted;
+                videoPlayer.frameReady -= HandleFrameReady;
+            }
 
             isSubscribed = false;
+            seekInProgress = false;
         }
 
         private void Update()
         {
-            if (controller == null || videoPlayer == null || !controller.IsReady || reachedCurrentStepEnd)
+            if (controller == null || videoPlayer == null || !controller.IsReady || reachedCurrentStepEnd
+                || seekInProgress || pendingSeek)
                 return;
 
             ProcedureStep step = controller.CurrentStep;
             if (step == null || !videoPlayer.isPrepared || !videoPlayer.isPlaying)
                 return;
 
-            if (videoPlayer.time >= step.VideoEndSeconds - endToleranceSeconds)
+            if (renderedTime >= step.VideoEndSeconds - endToleranceSeconds)
             {
                 videoPlayer.Pause();
-                videoPlayer.time = step.VideoEndSeconds;
                 reachedCurrentStepEnd = true;
             }
         }
@@ -115,9 +128,7 @@ namespace XRProceduralCopilot.Procedure
             if (newState == ProcedurePlaybackState.Help)
             {
                 // Snapshot before pausing so Help can never change the saved playhead.
-                helpVideoPosition = videoPlayer.isPrepared
-                    ? videoPlayer.time
-                    : (pendingSeek ? pendingSeekTime : videoPlayer.time);
+                helpVideoPosition = seekInProgress || pendingSeek ? pendingSeekTime : videoPlayer.time;
                 hasHelpPosition = true;
                 pendingPlay = false;
                 videoPlayer.Pause();
@@ -133,7 +144,7 @@ namespace XRProceduralCopilot.Procedure
             if (newState == ProcedurePlaybackState.Playing)
             {
                 pendingPlay = true;
-                if (!reachedCurrentStepEnd && videoPlayer.isPrepared)
+                if (!reachedCurrentStepEnd && !seekInProgress && !pendingSeek && videoPlayer.isPrepared)
                     videoPlayer.Play();
             }
             else
@@ -184,6 +195,27 @@ namespace XRProceduralCopilot.Procedure
             ApplyPendingSeek();
         }
 
+        private void HandleSeekCompleted(VideoPlayer source)
+        {
+            seekCompleted = true;
+            if (seekFrameReady) CompleteSeek();
+        }
+
+        private void HandleFrameReady(VideoPlayer source, long frameIndex)
+        {
+            if (source.frameRate <= 0) return;
+            renderedTime = frameIndex / source.frameRate;
+            if (!seekInProgress || System.Math.Abs(renderedTime - activeSeekTime) > 0.15d) return;
+            seekFrameReady = true;
+            if (seekCompleted) CompleteSeek();
+        }
+
+        private void CompleteSeek()
+        {
+            seekInProgress = false;
+            ApplyPendingSeek();
+        }
+
         private void ValidateVideoDuration()
         {
             if (controller == null || !controller.IsReady || videoPlayer == null || !videoPlayer.isPrepared)
@@ -210,13 +242,25 @@ namespace XRProceduralCopilot.Procedure
 
         private void ApplyPendingSeek()
         {
-            if (videoPlayer == null || !videoPlayer.isPrepared)
+            if (videoPlayer == null || !videoPlayer.isPrepared || seekInProgress)
                 return;
 
             if (pendingSeek)
             {
-                videoPlayer.time = pendingSeekTime;
                 pendingSeek = false;
+                double frameTolerance = videoPlayer.frameRate > 0 ? 1d / videoPlayer.frameRate + 0.005d : 0.04d;
+                // Adjacent segments can share the currently paused frame. Some decoders do
+                // not issue seek callbacks when asked to seek to that same frame.
+                if (renderedTime < 0 || System.Math.Abs(renderedTime - pendingSeekTime) > frameTolerance)
+                {
+                    seekInProgress = true;
+                    seekCompleted = false;
+                    seekFrameReady = false;
+                    activeSeekTime = pendingSeekTime;
+                    videoPlayer.Pause();
+                    videoPlayer.time = activeSeekTime;
+                    return;
+                }
             }
 
             if (pendingPlay && controller != null && controller.State == ProcedurePlaybackState.Playing
@@ -231,16 +275,9 @@ namespace XRProceduralCopilot.Procedure
             if (videoPlayer == null)
                 return;
 
-            if (videoPlayer.isPrepared)
-            {
-                videoPlayer.time = helpVideoPosition;
-                pendingSeek = false;
-            }
-            else
-            {
-                pendingSeekTime = helpVideoPosition;
-                pendingSeek = true;
-            }
+            pendingSeekTime = helpVideoPosition;
+            pendingSeek = true;
+            ApplyPendingSeek();
         }
     }
 }

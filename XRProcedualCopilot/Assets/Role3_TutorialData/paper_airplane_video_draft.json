@@ -1,0 +1,71 @@
+{
+  "tutorial_id": "paper_airplane_1PVA2nPU60U_draft",
+  "title": "Paper Airplane — Video-Aligned Draft",
+  "video_url": "",
+  "steps": [
+    {
+      "step_number": 1,
+      "title": "Make the center crease",
+      "instruction": "Take an 8.5 by 11 inch sheet of paper. Fold it in half as demonstrated, then open it again.",
+      "start_time": 8,
+      "end_time": 15,
+      "additional_guidance": "Draft timing. Check the video to confirm the fold direction and exact pause point."
+    },
+    {
+      "step_number": 2,
+      "title": "Fold the top down",
+      "instruction": "Fold the top down, leaving a little more than one inch at the bottom.",
+      "start_time": 15,
+      "end_time": 22,
+      "additional_guidance": "Compare the fold position with the demonstration before creasing."
+    },
+    {
+      "step_number": 3,
+      "title": "Refold the top section",
+      "instruction": "Open the top fold. Fold down along the line you just made, then follow the next fold in the demonstration.",
+      "start_time": 22,
+      "end_time": 31,
+      "additional_guidance": "Needs visual review: the transcript is unclear about the additional fold near 31 seconds. Confirm its direction and adjust this segment boundary."
+    },
+    {
+      "step_number": 4,
+      "title": "Fold triangles toward the center",
+      "instruction": "Fold both sides toward the center to form the triangles shown in the video.",
+      "start_time": 31,
+      "end_time": 42,
+      "additional_guidance": "Use the demonstration to identify the edges that meet the center crease."
+    },
+    {
+      "step_number": 5,
+      "title": "Fold to the new creases",
+      "instruction": "Open the triangle folds. Fold each side to the creases you just made, as demonstrated.",
+      "start_time": 42,
+      "end_time": 51,
+      "additional_guidance": "Needs visual review: confirm which edge aligns with which crease."
+    },
+    {
+      "step_number": 6,
+      "title": "Tuck the layers and fold in half",
+      "instruction": "Tuck the layers into the central pocket and lay the paper flat. Fold the model in half along the center crease.",
+      "start_time": 51,
+      "end_time": 60,
+      "additional_guidance": "Check the pocket and layer orientation against the demonstration."
+    },
+    {
+      "step_number": 7,
+      "title": "Form the wings",
+      "instruction": "Follow the demonstration to fold the wings, then open the airplane into its flying shape.",
+      "start_time": 60,
+      "end_time": 74,
+      "additional_guidance": "Needs visual review: the transcript does not specify the wing fold lines or angles."
+    },
+    {
+      "step_number": 8,
+      "title": "Try a flight",
+      "instruction": "Give the finished airplane a gentle throw into a clear space.",
+      "start_time": 74,
+      "end_time": 77,
+      "additional_guidance": "Choose a clear direction away from other people."
+    }
+  ]
+}
