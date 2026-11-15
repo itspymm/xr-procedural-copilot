@@ -1,0 +1,47 @@
+{
+  "tutorial_id": "coffee",
+  "title": "How to Make Coffee",
+  "video_url": "",
+  "steps": [
+    {
+      "step_number": 1,
+      "title": "Fill a kettle with water",
+      "instruction": "Fill a kettle with water.",
+      "start_time": 0,
+      "end_time": 5,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 2,
+      "title": "Heat the water until it is hot",
+      "instruction": "Heat the water until it is hot.",
+      "start_time": 5,
+      "end_time": 15,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 3,
+      "title": "Add ground coffee to a filter",
+      "instruction": "Add ground coffee to a filter.",
+      "start_time": 15,
+      "end_time": 25,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 4,
+      "title": "Slowly pour hot water over the coffee",
+      "instruction": "Slowly pour hot water over the coffee.",
+      "start_time": 25,
+      "end_time": 35,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 5,
+      "title": "Serve the coffee in a cup",
+      "instruction": "Serve the coffee in a cup.",
+      "start_time": 35,
+      "end_time": 45,
+      "additional_guidance": ""
+    }
+  ]
+}
