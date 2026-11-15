@@ -9,7 +9,7 @@
       "instruction": "Start with a rectangular sheet of paper. Fold it in half lengthwise, crease it firmly, and then unfold it.",
       "start_time": 0,
       "end_time": 10,
-      "additional_guidance": "Make sure the edges are aligned and crease firmly."
+      "additional_guidance": "Align the paper edges and press firmly along the crease."
     },
     {
       "step_number": 2,
@@ -17,7 +17,7 @@
       "instruction": "Fold both top corners inward until their edges meet along the center crease.",
       "start_time": 10,
       "end_time": 20,
-      "additional_guidance": "Make sure the edges are aligned and crease firmly."
+      "additional_guidance": "Keep both corners symmetrical along the center crease."
     },
     {
       "step_number": 3,
@@ -25,7 +25,7 @@
       "instruction": "Fold the paper in half along the original center crease. Fold both sides downward to form the wings.",
       "start_time": 20,
       "end_time": 35,
-      "additional_guidance": "Make sure the edges are aligned and crease firmly."
+      "additional_guidance": "Make both wings approximately the same size."
     }
   ]
 }
