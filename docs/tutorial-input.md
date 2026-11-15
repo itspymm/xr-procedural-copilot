@@ -1,8 +1,19 @@
 # Prepare on Mac, run on Quest
 
-The local companion accepts a YouTube URL, tutorial title, total duration in whole
-seconds, and a pasted transcript with `mm:ss` timestamps. Nothing fetches captions
-or downloads the video. Ollama generates a draft using the transcript only.
+The local companion accepts a YouTube URL, tutorial title, and a pasted transcript
+with `mm:ss` timestamps. The visible embedded player detects the duration automatically;
+you can override it in whole seconds if detection fails. Nothing fetches captions
+or downloads the video. Copied YouTube labels such as `0:033 secondsText` and
+`1:061 minute, 6 secondsText` are normalized to `[00:03] Text` and
+`[01:06] Text` before generation. Speech, measurements, and chapter headings are
+preserved. The cleaned transcript appears in the form when generation finishes
+and is included when publishing for chat context. Ambiguous labels are rejected
+with a formatting message instead of guessing a timestamp.
+Ollama generates a draft using the transcript only. Timestamp fields in its output
+schema are restricted to the transcript's boundaries and the video end. If the
+result still has invalid ordering, numbering, or structure, the companion makes
+one correction request and validates again. Failed drafts are never published;
+instruction accuracy and exact pause placement still need human review.
 
 ## Start
 
@@ -14,8 +25,8 @@ python3 role3_ai/tutorial_server.py
 
 Open http://127.0.0.1:8765 in your Mac browser. Keep the server running. It sets up
 `adb reverse tcp:8765 tcp:8765` when Android tools are available, which lets the
-headset reach the Mac's loopback-only server through USB. If you reconnect USB,
-restart the server to restore the link. The included Mac fallback finds the same
+headset reach the Mac's loopback-only server through USB. The companion checks the USB forwarding rule every three seconds and
+restores it automatically after a reconnect or if another tool removes it. The included Mac fallback finds the same
 Unity 6000.3.28f1 Android tools used for this project; other machines need `adb`
 on PATH. Quest must still have Wi-Fi for YouTube and the existing Wit.ai voice
 commands.
@@ -27,7 +38,8 @@ published. After that, changing tutorials does not require another Unity build.
 
 ## Use
 
-1. Enter the URL, title and video duration, then paste the timestamped transcript.
+1. Enter the URL and title, then paste the timestamped transcript. Wait for the
+   detected length; if needed, press Play in the preview or enter seconds manually.
 2. Click **Generate steps**. The Mac calls the local Gemma 3 4B model.
 3. Review the draft alongside the embedded video. Titles, instructions, guidance,
    and start/end times are editable. AI accuracy is not guaranteed.
@@ -58,6 +70,10 @@ YouTube and voice. This is a USB demo connection, not a public or LAN service.
 python3 -m unittest discover -s role3_ai -p 'test_*.py'
 node tests/youtube-player.test.cjs
 ```
+
+The duration helper checks common URL forms, delayed metadata, cancellation of
+stale lookups, player errors, and manual fallback. Run `node tests/youtube-duration.test.cjs`.
+Use recorded videos; a live stream has no fixed final duration.
 
 The server tests cover background generation, required review, validation,
 preservation of the last valid publication, revision acknowledgement, restart

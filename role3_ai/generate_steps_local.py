@@ -1,12 +1,13 @@
 """Generate a review draft from a timestamped transcript using local Ollama."""
 import argparse
+import copy
 import json
-import re
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from transcript_input import normalize_transcript, transcript_boundaries
 
 
 STEP_FIELDS = {
@@ -73,7 +74,7 @@ def validate_steps(steps, duration, boundaries=None):
         if not previous_end <= start < end <= duration:
             raise ValueError(f"Step {number}: overlapping or invalid timestamps.")
         if boundaries is not None and (start not in boundaries or end not in boundaries):
-            raise ValueError(f"Step {number}: timestamps must use the supplied transcript boundaries.")
+            raise ValueError(f"Step {number}: timestamps {start}–{end} must use the supplied transcript boundaries {boundaries}.")
         previous_end = end
 
 
@@ -82,30 +83,55 @@ def generate_procedure(transcript, title, duration, video_url="", model="gemma3:
         raise ValueError("Provide a positive duration and a non-empty title.")
     if not transcript.strip():
         raise ValueError("Transcript is empty.")
-    boundaries = sorted({int(m) * 60 + int(s) for m, s in re.findall(r"(?<!\d)(\d+):([0-5]\d)(?!\d)", transcript)} | {duration})
-    if len(boundaries) < 2 or any(t > duration for t in boundaries):
-        raise ValueError("Transcript needs mm:ss timestamps within the video duration.")
+    transcript = normalize_transcript(transcript)
+    boundaries = transcript_boundaries(transcript, duration)
+    schema = copy.deepcopy(SCHEMA)
+    properties = schema["properties"]["steps"]["items"]["properties"]
+    for key in ("start_time", "end_time"):
+        properties[key]["enum"] = boundaries
     payload = {
         "model": model,
         "stream": False,
-        "format": SCHEMA,
+        "format": schema,
         "options": {"temperature": 0, "num_ctx": 8192, "num_predict": 4096},
         "messages": [
             {"role": "system", "content": SYSTEM},
             {"role": "user", "content": json.dumps({"title": title, "duration_seconds": duration, "allowed_boundary_seconds": boundaries, "transcript": transcript})},
         ],
     }
-    request = urllib.request.Request(
-        "http://127.0.0.1:11434/api/chat",
-        data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(request, timeout=300) as response:
-        result = json.load(response)
-    if result.get("done_reason") == "length":
-        raise ValueError("Model output was truncated; shorten the transcript.")
-    generated = json.loads(result["message"]["content"])
-    validate_steps(generated.get("steps"), duration, boundaries)
+    # The decoding schema restricts timestamp values. Cross-step ordering still
+    # needs validation, so allow one targeted correction before returning an error.
+    for attempt in range(2):
+        request = urllib.request.Request(
+            "http://127.0.0.1:11434/api/chat",
+            data=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(request, timeout=300) as response:
+            result = json.load(response)
+        if result.get("done_reason") == "length":
+            raise ValueError("Model output was truncated; shorten the transcript.")
+        content = result["message"]["content"]
+        try:
+            generated = json.loads(content)
+            if not isinstance(generated, dict):
+                raise ValueError("The model must return a tutorial object.")
+            validate_steps(generated.get("steps"), duration, boundaries)
+            break
+        except ValueError as error:
+            if attempt:
+                raise ValueError("The model could not produce valid steps after a correction attempt. "
+                                 "Try generating again or use a shorter transcript. Details: " + str(error)) from error
+            payload["messages"].extend([
+                {"role": "assistant", "content": content},
+                {"role": "user", "content": (
+                    "Correct the draft so it passes validation. Keep its grounded instructions. "
+                    "Use only these timestamp choices: " + json.dumps(boundaries) +
+                    ". Each step must start before its end and at or after the previous step's end. "
+                    "Merge actions that belong in the same timestamp interval rather than inventing times. "
+                    "Number steps consecutively from 1. Return the complete corrected JSON. "
+                    "Validation error: " + str(error))},
+            ])
     return {
         "tutorial_id": tutorial_id,
         "title": title,

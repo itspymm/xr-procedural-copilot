@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 from generate_steps_local import generate_procedure, validate_steps
 from clarification import answer_question
+from transcript_input import normalize_transcript
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "local_data"
@@ -44,7 +45,7 @@ def validate_input(data):
         raise ValueError("Paste a timestamped transcript of up to 24,000 characters.")
     if type(duration) is not int or not 1 <= duration <= 86400:
         raise ValueError("Enter the video duration in whole seconds (1–86400).")
-    return {"title": title.strip(), "transcript": transcript, "duration": duration,
+    return {"title": title.strip(), "transcript": normalize_transcript(transcript), "duration": duration,
             "url": "https://www.youtube.com/watch?v=" + video}
 
 
@@ -89,7 +90,7 @@ class State:
             self.directory.mkdir(parents=True, exist_ok=True)
             (self.directory / (job_id + "_draft.json")).write_text(json.dumps(procedure, indent=2))
             with self.lock:
-                self.jobs[job_id] = {"status": "ready", "procedure": procedure, "duration": source["duration"]}
+                self.jobs[job_id] = {"status": "ready", "procedure": procedure, "duration": source["duration"], "transcript": source["transcript"]}
         except Exception as error:
             with self.lock:
                 self.jobs[job_id] = {"status": "failed", "error": "Local generation failed: " + str(error)}
@@ -129,6 +130,8 @@ def make_handler(state):
                 return
             if self.path == "/":
                 self.respond(200, (ROOT / "web" / "index.html").read_text(), "text/html")
+            elif self.path == "/duration.js":
+                self.respond(200, (ROOT / "web" / "duration.js").read_text(), "text/javascript")
             elif self.path == "/api/example":
                 self.respond(200, {"title": "Easy Paper Airplane", "url": "https://youtu.be/1PVA2nPU60U", "duration": 89,
                     "transcript": (ROOT / "inputs" / "airplane_video_transcript.txt").read_text()})
@@ -208,7 +211,7 @@ def make_handler(state):
                     if not isinstance(transcript, str) or len(transcript) > 24000:
                         raise ValueError("Invalid transcript.")
                     procedure = validate_publication(data)
-                    value = {"revision": uuid.uuid4().hex, "procedure_json": json.dumps(procedure), "duration": data["duration"], "transcript": data.get("transcript", "")}
+                    value = {"revision": uuid.uuid4().hex, "procedure_json": json.dumps(procedure), "duration": data["duration"], "transcript": normalize_transcript(transcript)}
                     with state.lock:
                         state.directory.mkdir(parents=True, exist_ok=True)
                         temp = state.directory / "active.tmp"
@@ -230,6 +233,35 @@ def make_handler(state):
     return Handler
 
 
+def ensure_usb_forward(adb, port):
+    """Recreate only our mapping if a USB reconnect or another tool removed it."""
+    address = f"tcp:{port}"
+    try:
+        listed = subprocess.run([adb, "reverse", "--list"],
+                                capture_output=True, text=True, timeout=5)
+        if listed.returncode != 0:
+            return False
+        if any(line.split()[-2:] == [address, address] for line in listed.stdout.splitlines()):
+            return True
+        repaired = subprocess.run([adb, "reverse", address, address],
+                                  capture_output=True, text=True, timeout=5)
+        return repaired.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def maintain_usb_link(adb, port, stop):
+    previous = None
+    while not stop.is_set():
+        connected = ensure_usb_forward(adb, port)
+        if connected != previous:
+            print("Quest USB link ready." if connected else
+                  "Quest USB link unavailable — waiting to reconnect automatically.", flush=True)
+        previous = connected
+        if stop.wait(3):
+            break
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8765)
@@ -239,19 +271,18 @@ def main():
     bundled = Path("/Applications/Unity/Hub/Editor/6000.3.28f1/PlaybackEngines/AndroidPlayer/SDK/platform-tools/adb")
     if not adb and bundled.exists():
         adb = str(bundled)
+    stop = threading.Event()
     if adb:
-        try:
-            result = subprocess.run([adb, "reverse", f"tcp:{args.port}", f"tcp:{args.port}"],
-                                    capture_output=True, text=True, timeout=10)
-            print("Quest USB link ready." if result.returncode == 0 else "Quest USB link unavailable; connect the headset and restart this server.", flush=True)
-        except (OSError, subprocess.TimeoutExpired):
-            print("Quest USB link unavailable. You can still prepare a tutorial.", flush=True)
+        threading.Thread(target=maintain_usb_link, args=(adb, args.port, stop), daemon=True).start()
+    else:
+        print("ADB was not found; install Android tools to connect Quest by USB.", flush=True)
     print(f"Open http://127.0.0.1:{args.port} — leave this Terminal running.", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        stop.set()
         server.server_close()
 
 

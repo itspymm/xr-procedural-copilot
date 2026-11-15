@@ -8,9 +8,11 @@
 <main><div class="tag">Local AI · Quest companion</div><h1>Turn a tutorial into your next step.</h1><p>Add a YouTube link and a timestamped transcript. Generate a draft, check it against the video, then send it to your headset.</p>
 <div class="grid"><section class="card"><h2><span class="number">1</span>Add your tutorial</h2>
 <form id="source"><label for="url">YouTube URL</label><input id="url" type="url" required placeholder="https://www.youtube.com/watch?v=…">
-<div class="row"><div><label for="title">Tutorial title</label><input id="title" required maxlength="160" placeholder="How to fold a paper airplane"></div><div style="max-width:145px"><label for="duration">Length in seconds</label><input id="duration" type="number" min="1" max="86400" required placeholder="89"></div></div>
+<div class="row"><div><label for="title">Tutorial title</label><input id="title" required maxlength="160" placeholder="How to fold a paper airplane"></div><div style="max-width:180px"><label for="duration">Video length (seconds)</label><input id="duration" type="number" min="1" max="86400" required placeholder="Auto-detect"></div></div>
+<p id="duration-status" class="hint" role="status">Paste a YouTube link to detect its length. You can also enter seconds manually.</p><button id="retry-duration" class="secondary" type="button">Detect length</button>
+<div id="duration-preview" hidden style="margin-top:16px;min-height:200px"></div>
 <label for="transcript">Timestamped transcript</label><textarea id="transcript" rows="15" required maxlength="24000" placeholder="[00:08] Fold the paper in half.&#10;[00:15] Open it up…"></textarea>
-<div class="hint">Paste your own transcript with mm:ss timestamps. Nothing is fetched automatically.</div>
+<div class="hint">Paste your own transcript with mm:ss timestamps. Copied YouTube timestamp labels are cleaned automatically. The transcript is never fetched automatically.</div>
 <div class="actions"><button id="generate" type="submit">Generate steps</button><button id="example" class="secondary" type="button">Use airplane example</button></div></form>
 <div id="message" role="status" aria-live="polite"></div></section>
 <section class="card"><h2><span class="number">2</span>Review & send</h2><div id="empty" class="empty"><b>Your draft will appear here.</b>Check each instruction and pause point before using it on Quest.</div>
@@ -19,16 +21,46 @@
 <div id="steps"></div><label class="check"><input type="checkbox" id="reviewed">I reviewed these instructions and pause times against the video.</label>
 <div class="actions"><button id="publish" disabled>Send to Quest</button><button id="download" class="secondary">Save JSON</button></div><p id="delivery" class="hint" role="status"></p></div></section></div>
 <p class="footer">Keep Ollama and this companion running on your Mac, with Quest connected by USB. The video streams from YouTube; generation runs locally.</p></main>
+<script src="/duration.js"></script>
 <script>
 'use strict';
-const $=id=>document.getElementById(id);let draft=null,duration=0,publishedRevision='';
+const $=id=>document.getElementById(id);let draft=null,duration=0,publishedRevision='',generating=false,lookupVersion=0,cancelLookup=null,lookupTimer=null,manualDuration=false;
+function updateGenerate(){ $('generate').disabled=generating || !$('duration').validity.valid || !$('duration').value; }
+async function detectDuration(){
+  const version=++lookupVersion;
+  if(cancelLookup){cancelLookup();cancelLookup=null;}
+  clearTimeout(lookupTimer);
+  const container=$('duration-preview');container.replaceChildren();container.hidden=true;
+  let id;
+  try{id=CopilotDuration.videoId($('url').value);}catch(e){$('duration-status').textContent=e.message;return;}
+  $('duration-status').textContent='Detecting length… If needed, press Play in the preview. You can also enter seconds manually.';
+  try{
+    const YT=await CopilotDuration.loadAPI();if(version!==lookupVersion)return;
+    const host=document.createElement('div');container.append(host);container.hidden=false;
+    cancelLookup=CopilotDuration.watch((element,options)=>new YT.Player(element,options),host,id,seconds=>{
+      if(version!==lookupVersion)return;
+      if(!manualDuration){if(draft && Number($('duration').value)!==seconds){resetReview();message('Video length changed. Generate a new draft before sending.');}$('duration').value=seconds;updateGenerate();}
+      $('duration-status').textContent=manualDuration?'Using your manually entered length.':'Detected '+seconds+' seconds. You can edit this if needed.';
+    },error=>{if(version===lookupVersion)$('duration-status').textContent=error;});
+  }catch(e){if(version===lookupVersion)$('duration-status').textContent=e.message;}
+}
+$('url').addEventListener('input',()=>{
+  lookupVersion++;if(cancelLookup){cancelLookup();cancelLookup=null;}clearTimeout(lookupTimer);
+  $('duration-preview').replaceChildren();$('duration-preview').hidden=true;
+  $('duration').value='';manualDuration=false;updateGenerate();
+  $('duration-status').textContent='Waiting for a YouTube link…';
+  lookupTimer=setTimeout(detectDuration,600);
+});
+$('duration').addEventListener('input',()=>{manualDuration=!!$('duration').value;updateGenerate();$('duration-status').textContent=manualDuration?'Using your manually entered length.':'Enter seconds manually or click Detect length.';});
+$('retry-duration').onclick=()=>{manualDuration=false;detectDuration();};
+updateGenerate();
 async function api(path,data){const r=await fetch(path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const value=await r.json();if(!r.ok)throw Error(value.error||'Request failed');return value;}
 function message(text,error=false){$('message').textContent=text;$('message').classList.toggle('error',error);}
 function resetReview(){draft=null;publishedRevision='';$('reviewed').checked=false;$('publish').disabled=true;$('review').hidden=true;$('empty').hidden=false;$('preview').src='about:blank';$('delivery').textContent='';}
 function field(parent,label,value,kind,key,step){const l=document.createElement('label');l.textContent=label;const input=document.createElement(kind==='textarea'?'textarea':'input');if(kind==='number'){input.type='number';input.min=0;input.step=1;}if(kind==='textarea')input.rows=2;input.value=value;input.setAttribute('aria-label',label+' for step '+step.step_number);input.addEventListener('input',()=>{step[key]=kind==='number'?Number(input.value):input.value;$('reviewed').checked=false;$('publish').disabled=true;publishedRevision='';$('delivery').textContent='Draft changed. Review before sending again.';});l.append(input);parent.append(l);}
 function render(){const list=$('steps');list.replaceChildren();for(const step of draft.steps){const el=document.createElement('div');el.className='step';const h=document.createElement('h3');h.textContent='STEP '+step.step_number;el.append(h);field(el,'Title',step.title,'text','title',step);field(el,'Instruction',step.instruction,'textarea','instruction',step);const row=document.createElement('div');row.className='row';field(row,'Start',step.start_time,'number','start_time',step);field(row,'Pause at',step.end_time,'number','end_time',step);el.append(row);field(el,'Additional guidance',step.additional_guidance,'textarea','additional_guidance',step);list.append(el);}const id=new URL(draft.video_url).searchParams.get('v');$('preview').src='https://www.youtube.com/embed/'+encodeURIComponent(id);$('empty').hidden=true;$('review').hidden=false;}
-$('example').onclick=async()=>{try{const v=await api('/api/example');for(const k of ['url','title','duration','transcript'])$(k).value=v[k];resetReview();message('Example loaded. Click Generate steps to run the local model.');}catch(e){message(e.message,true);}};
-$('source').addEventListener('submit',async e=>{e.preventDefault();resetReview();$('generate').disabled=true;$('example').disabled=true;message('Generating with the local model… This can take a minute.');try{const source={url:$('url').value,title:$('title').value,duration:Number($('duration').value),transcript:$('transcript').value};const {job}=await api('/api/generate',source);for(;;){await new Promise(r=>setTimeout(r,1000));const result=await api('/api/jobs/'+job);if(result.status==='failed')throw Error(result.error);if(result.status==='ready'){draft=result.procedure;duration=result.duration;render();message('Generated '+draft.steps.length+' draft steps. Review the video and edit anything inaccurate.');break;}}}catch(e){message(e.message,true);}finally{$('generate').disabled=false;$('example').disabled=false;}});
+$('example').onclick=async()=>{try{const v=await api('/api/example');for(const k of ['url','title','transcript'])$(k).value=v[k];$('duration').value='';manualDuration=false;resetReview();updateGenerate();detectDuration();message('Example loaded. Click Generate steps to run the local model.');}catch(e){message(e.message,true);}};
+$('source').addEventListener('submit',async e=>{e.preventDefault();resetReview();generating=true;updateGenerate();$('example').disabled=true;message('Generating with the local model… This can take a minute.');try{const source={url:$('url').value,title:$('title').value,duration:Number($('duration').value),transcript:$('transcript').value};const {job}=await api('/api/generate',source);for(;;){await new Promise(r=>setTimeout(r,1000));const result=await api('/api/jobs/'+job);if(result.status==='failed')throw Error(result.error);if(result.status==='ready'){draft=result.procedure;duration=result.duration;if(typeof result.transcript==='string')$('transcript').value=result.transcript;render();message('Generated '+draft.steps.length+' draft steps. Review the video and edit anything inaccurate.');break;}}}catch(e){message(e.message,true);}finally{generating=false;updateGenerate();$('example').disabled=false;}});
 $('source').addEventListener('input',()=>{if(draft){resetReview();message('Source changed. Generate a new draft before sending.');}});
 $('reviewed').onchange=()=>{$('publish').disabled=!draft||!$('reviewed').checked;};
 $('publish').onclick=async()=>{$('publish').disabled=true;try{const result=await api('/api/publish',{procedure:draft,duration,transcript:$('transcript').value,reviewed:$('reviewed').checked});publishedRevision=result.revision;$('delivery').textContent='Sent. Waiting for Quest to load this tutorial…';}catch(e){$('delivery').textContent=e.message;}finally{$('publish').disabled=!$('reviewed').checked;}};

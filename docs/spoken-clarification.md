@@ -45,6 +45,19 @@ Restarting the companion alone does not update Quest code. Build TutorialInput
 explicitly (the default scene list is VideoReview), install that APK, then launch
 the app again. The clarification build is `Builds/QuestClarification.apk`.
 
+## Readable panel and long answers
+
+The polished TutorialInput interface uses the included OFL-licensed Atkinson
+Hyperlegible font, a padded dark panel, a step heading and progress bar, and a
+separate question label. Long instructions and answers use fixed-size pages
+rather than overflowing or shrinking. Move the right thumbstick down/up to page
+forward/back, or say **read more**, **next page**, or **previous page**. These page
+commands work both during instructions and Help mode. Leaving Help restores the
+current instruction at its first page. The return phrase remains **continue tutorial**.
+
+The polished build is `Builds/QuestPolished.apk`. Check headset readability,
+long-answer paging in both directions, and separation from the video below.
+
 A video pause alone does not indicate Help mode: each video segment normally
 pauses at its end. Help mode changes the instruction text to a question prompt.
 If the voice status asks you to send a tutorial, publish from the companion and

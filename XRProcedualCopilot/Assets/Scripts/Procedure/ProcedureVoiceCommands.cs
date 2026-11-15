@@ -99,7 +99,7 @@ namespace XRProceduralCopilot.Procedure
         private void Update()
         {
             if (listening && Time.unscaledTime >= feedbackUntil && statusText != null)
-                statusText.text = $"Listening • mic level {micLevel:0.00}";
+                statusText.text = answering ? "Thinking about your question…" : "Listening · speak when you’re ready";
 #if !UNITY_EDITOR
             if (!Application.isFocused) return;
 #endif
@@ -143,6 +143,13 @@ namespace XRProceduralCopilot.Procedure
             command = Regex.Replace(command, @"\s+", " ").Trim();
             consecutiveErrors = 0;
             if (Time.unscaledTime - lastCommandTime < 0.8f) return;
+            if (panel != null && (command == "read more" || command == "next page" || command == "previous page"))
+            {
+                bool moved = panel.ChangePage(command == "previous page" ? -1 : 1);
+                Show(moved ? "Page changed" : "No more pages", 2f);
+                lastCommandTime = Time.unscaledTime;
+                return;
+            }
             // Clarification is enabled only in the companion scene.
             if (receiver != null && panel != null)
             {
@@ -174,7 +181,7 @@ namespace XRProceduralCopilot.Procedure
                     controller.EnterHelp();
                     conversationVersion++;
                     history.Clear();
-                    panel.ShowClarification("What would you like to know about this step?\n\nSay your question, or say ‘continue tutorial’ to return.");
+                    panel.ShowClarification("What would you like to know about this step?\n\nAsk a question or say ‘continue tutorial’ to return.");
                     Show("Ask about this step", 2f);
                     lastCommandTime = Time.unscaledTime;
                     return;
@@ -208,7 +215,7 @@ namespace XRProceduralCopilot.Procedure
             int version = conversationVersion;
             string revision = receiver.LoadedRevision;
             int step = controller.CurrentStepNumber;
-            panel.ShowClarification("You asked: " + question + "\n\nThinking…\nSay ‘continue tutorial’ to return.");
+            panel.ShowClarification("Thinking about your question…", question);
             var body = new ChatRequest { revision = revision, step_number = step,
                 question = question, history = history.ToArray() };
             using (var request = new UnityWebRequest(receiver.CompanionUrl + "/api/chat", "POST"))
@@ -230,14 +237,13 @@ namespace XRProceduralCopilot.Procedure
                 {
                     string error = response != null && !string.IsNullOrEmpty(response.error)
                         ? response.error : "Could not reach the Mac companion. Check USB and the server.";
-                    panel.ShowClarification(error + "\n\nAsk again, or say ‘continue tutorial’.");
+                    panel.ShowClarification(error + "\n\nAsk again, or say ‘continue tutorial’.", question);
                     yield break;
                 }
                 history.Add(new ChatTurn { role = "user", content = question });
                 history.Add(new ChatTurn { role = "assistant", content = response.answer });
                 while (history.Count > 8) history.RemoveRange(0, 2);
-                panel.ShowClarification("You asked: " + question + "\n\n" + response.answer
-                    + "\n\nAsk a follow-up, or say ‘continue tutorial’.");
+                panel.ShowClarification(response.answer, question);
                 Show("Answer ready", 2f);
             }
         }
