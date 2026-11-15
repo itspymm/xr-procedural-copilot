@@ -58,6 +58,13 @@ namespace XRProceduralCopilot.Procedure
             stepCounter.text = $"STEP {stepNumber} OF {controller.TotalSteps}";
         }
 
+        public void ShowClarification(string text)
+        {
+            if (instructionText != null) instructionText.text = text;
+        }
+
+        public void RestoreInstruction() => DisplayStep(controller.CurrentStep, controller.CurrentStepNumber);
+
         private void Update()
         {
             var right = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);

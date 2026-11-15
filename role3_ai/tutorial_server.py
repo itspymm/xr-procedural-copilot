@@ -11,6 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 from generate_steps_local import generate_procedure, validate_steps
+from clarification import answer_question
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "local_data"
@@ -168,9 +169,46 @@ def make_handler(state):
                             del state.jobs[next(iter(state.jobs))]
                     threading.Thread(target=state.generate, args=(job, source), daemon=True).start()
                     self.respond(202, {"job": job})
+                elif self.path == "/api/chat":
+                    with state.lock:
+                        active = dict(state.active)
+                    if not active["revision"] or data.get("revision") != active["revision"]:
+                        raise ValueError("Load the currently published tutorial before asking a question.")
+                    procedure = json.loads(active["procedure_json"])
+                    step = data.get("step_number")
+                    question = data.get("question")
+                    history = data.get("history", [])
+                    if type(step) is not int or not 1 <= step <= len(procedure["steps"]):
+                        raise ValueError("Invalid step.")
+                    if not isinstance(question, str) or not question.strip() or len(question) > 1000:
+                        raise ValueError("Ask a question of up to 1,000 characters.")
+                    if not isinstance(history, list) or len(history) > 8 or any(
+                        not isinstance(turn, dict) or turn.get("role") not in ("user", "assistant")
+                        or not isinstance(turn.get("content"), str) or len(turn["content"]) > 4000
+                        for turn in history):
+                        raise ValueError("Invalid conversation history.")
+                    if not state.busy.acquire(blocking=False):
+                        self.respond(409, {"error": "The model is busy. Please ask again shortly."})
+                        return
+                    try:
+                        answer = answer_question(procedure, active.get("transcript", ""), step, question, history)
+                    except Exception:
+                        self.respond(503, {"error": "Local answer unavailable. Check Ollama and try again."})
+                        return
+                    finally:
+                        state.busy.release()
+                    with state.lock:
+                        current_revision = state.active["revision"]
+                    if current_revision != active["revision"]:
+                        self.respond(409, {"error": "Tutorial changed. Ask again on the new tutorial."})
+                        return
+                    self.respond(200, {"answer": answer, "revision": current_revision, "step_number": step})
                 elif self.path == "/api/publish":
+                    transcript = data.get("transcript", "")
+                    if not isinstance(transcript, str) or len(transcript) > 24000:
+                        raise ValueError("Invalid transcript.")
                     procedure = validate_publication(data)
-                    value = {"revision": uuid.uuid4().hex, "procedure_json": json.dumps(procedure), "duration": data["duration"]}
+                    value = {"revision": uuid.uuid4().hex, "procedure_json": json.dumps(procedure), "duration": data["duration"], "transcript": data.get("transcript", "")}
                     with state.lock:
                         state.directory.mkdir(parents=True, exist_ok=True)
                         temp = state.directory / "active.tmp"

@@ -13,6 +13,8 @@ namespace XRProceduralCopilot.Procedure
         [SerializeField] private YouTubeProcedurePlayer player;
         [SerializeField] private string companionUrl = "http://127.0.0.1:8765";
         private string loadedRevision = "";
+        public string LoadedRevision => loadedRevision;
+        public string CompanionUrl => companionUrl;
         private string acknowledgedRevision = "";
         private string lastError = "";
 

@@ -1,4 +1,8 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Text;
+using UnityEngine.Networking;
 using System.Text.RegularExpressions;
 using Oculus.Voice;
 using TMPro;
@@ -12,6 +16,30 @@ namespace XRProceduralCopilot.Procedure
         [SerializeField] private AppVoiceExperience voice;
         [SerializeField] private ProcedureController controller;
         [SerializeField] private TMP_Text statusText;
+        private TutorialReceiver receiver;
+        private ProcedurePanel panel;
+        private bool answering;
+        private int conversationVersion;
+        private readonly List<ChatTurn> history = new List<ChatTurn>();
+        [Serializable] private sealed class ChatTurn
+        {
+            public string role;
+            public string content;
+        }
+        [Serializable] private sealed class ChatRequest
+        {
+            public string revision;
+            public int step_number;
+            public string question;
+            public ChatTurn[] history;
+        }
+        [Serializable] private sealed class ChatResponse
+        {
+            public string answer;
+            public string error;
+            public string revision;
+            public int step_number;
+        }
         private bool ready;
         private float nextActivation;
         private float feedbackUntil;
@@ -62,6 +90,8 @@ namespace XRProceduralCopilot.Procedure
             // RequestUserAuthorization/HasUserAuthorization do not describe macOS permission.
             yield return null;
 #endif
+            receiver = GetComponent<TutorialReceiver>();
+            panel = GetComponent<ProcedurePanel>();
             ready = true;
             nextActivation = Time.unscaledTime + 0.5f;
         }
@@ -83,7 +113,8 @@ namespace XRProceduralCopilot.Procedure
         {
             listening = true;
             micLevel = 0f;
-            if (Time.unscaledTime >= feedbackUntil) Show("Listening: Next step / Go back / Repeat", 0f);
+            if (Time.unscaledTime >= feedbackUntil) Show(controller != null && controller.State == ProcedurePlaybackState.Help
+                ? "Ask a question / Continue tutorial" : "Next step / Go back / Repeat / Help", 0f);
         }
 
         private void HandleStopped()
@@ -112,6 +143,43 @@ namespace XRProceduralCopilot.Procedure
             command = Regex.Replace(command, @"\s+", " ").Trim();
             consecutiveErrors = 0;
             if (Time.unscaledTime - lastCommandTime < 0.8f) return;
+            // Clarification is enabled only in the companion scene.
+            if (receiver != null && panel != null)
+            {
+                if (command == "continue tutorial")
+                {
+                    conversationVersion++;
+                    history.Clear();
+                    controller.ResumeProcedure();
+                    panel.RestoreInstruction();
+                    Show("Tutorial resumed", 2f);
+                    lastCommandTime = Time.unscaledTime;
+                    return;
+                }
+                if (controller.State == ProcedurePlaybackState.Help)
+                {
+                    if (answering) { Show("Still thinking…", 2f); return; }
+                    if (transcript.Length > 1000) { Show("Please ask a shorter question", 2f); return; }
+                    StartCoroutine(AskQuestion(transcript));
+                    lastCommandTime = Time.unscaledTime;
+                    return;
+                }
+                if (command == "help")
+                {
+                    if (string.IsNullOrEmpty(receiver.LoadedRevision))
+                    {
+                        Show("Send a tutorial from the Mac before asking for help", 5f);
+                        return;
+                    }
+                    controller.EnterHelp();
+                    conversationVersion++;
+                    history.Clear();
+                    panel.ShowClarification("What would you like to know about this step?\n\nSay your question, or say ‘continue tutorial’ to return.");
+                    Show("Ask about this step", 2f);
+                    lastCommandTime = Time.unscaledTime;
+                    return;
+                }
+            }
             bool changed;
             switch (command)
             {
@@ -134,6 +202,46 @@ namespace XRProceduralCopilot.Procedure
             lastCommandTime = Time.unscaledTime;
         }
 
+        private IEnumerator AskQuestion(string question)
+        {
+            answering = true;
+            int version = conversationVersion;
+            string revision = receiver.LoadedRevision;
+            int step = controller.CurrentStepNumber;
+            panel.ShowClarification("You asked: " + question + "\n\nThinking…\nSay ‘continue tutorial’ to return.");
+            var body = new ChatRequest { revision = revision, step_number = step,
+                question = question, history = history.ToArray() };
+            using (var request = new UnityWebRequest(receiver.CompanionUrl + "/api/chat", "POST"))
+            {
+                request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(JsonUtility.ToJson(body)));
+                request.downloadHandler = new DownloadHandlerBuffer();
+                request.SetRequestHeader("Content-Type", "application/json");
+                request.timeout = 100;
+                yield return request.SendWebRequest();
+                answering = false;
+                if (version != conversationVersion || controller.State != ProcedurePlaybackState.Help
+                    || receiver.LoadedRevision != revision || controller.CurrentStepNumber != step) yield break;
+                ChatResponse response = null;
+                try { response = JsonUtility.FromJson<ChatResponse>(request.downloadHandler.text); }
+                catch (Exception) { }
+                if (request.result != UnityWebRequest.Result.Success || response == null
+                    || string.IsNullOrWhiteSpace(response.answer) || response.revision != revision
+                    || response.step_number != step)
+                {
+                    string error = response != null && !string.IsNullOrEmpty(response.error)
+                        ? response.error : "Could not reach the Mac companion. Check USB and the server.";
+                    panel.ShowClarification(error + "\n\nAsk again, or say ‘continue tutorial’.");
+                    yield break;
+                }
+                history.Add(new ChatTurn { role = "user", content = question });
+                history.Add(new ChatTurn { role = "assistant", content = response.answer });
+                while (history.Count > 8) history.RemoveRange(0, 2);
+                panel.ShowClarification("You asked: " + question + "\n\n" + response.answer
+                    + "\n\nAsk a follow-up, or say ‘continue tutorial’.");
+                Show("Answer ready", 2f);
+            }
+        }
+
         private void Show(string message, float duration)
         {
             if (statusText != null) statusText.text = message;
@@ -149,6 +257,9 @@ namespace XRProceduralCopilot.Procedure
 
         private void OnDisable()
         {
+            conversationVersion++;
+            answering = false;
+            StopAllCoroutines();
             if (voice == null) return;
             voice.VoiceEvents.OnFullTranscription.RemoveListener(HandleTranscription);
             voice.VoiceEvents.OnStartListening.RemoveListener(HandleListening);
