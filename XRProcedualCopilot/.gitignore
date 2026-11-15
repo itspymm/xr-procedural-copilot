@@ -107,3 +107,9 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Local voice service configuration (contains access credentials).
+/Assets/VoiceLocal/
+/Assets/VoiceLocal.meta
+/ProjectSettings/wit.config
+/ProjectSettings/WitConfigExports/
