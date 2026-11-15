@@ -10,20 +10,30 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4140c310b1ec4b298da471edb9301d61, type: 3}
-  m_Name: PaperAirplane
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::XRProceduralCopilot.Procedure.ProcedureDefinition
+  tutorialId: paper_airplane
   procedureTitle: How to Make a Paper Airplane
+  videoUrl: 
   steps:
-  - title: Create the Center Crease
-    instruction: Fold the paper in half lengthwise, then unfold it.
+  - stepNumber: 1
+    title: Start with a rectangular sheet of paper
+    instruction: Start with a rectangular sheet of paper. Fold it in half lengthwise,
+      crease it firmly, and then unfold it.
+    additionalGuidance: Make sure the edges are aligned and crease firmly.
     videoStartSeconds: 0
     videoEndSeconds: 10
-  - title: Fold the Top Corners
-    instruction: Fold both top corners inward to meet the center crease.
+  - stepNumber: 2
+    title: Fold both top corners inward until their edge
+    instruction: Fold both top corners inward until their edges meet along the center
+      crease.
+    additionalGuidance: Make sure the edges are aligned and crease firmly.
     videoStartSeconds: 10
     videoEndSeconds: 20
-  - title: Create the Wings
-    instruction: Fold the paper in half along the center crease, then fold each side
-      down to form wings.
+  - stepNumber: 3
+    title: Fold the paper in half along the original cen
+    instruction: Fold the paper in half along the original center crease. Fold both
+      sides downward to form the wings.
+    additionalGuidance: Make sure the edges are aligned and crease firmly.
     videoStartSeconds: 20
     videoEndSeconds: 35

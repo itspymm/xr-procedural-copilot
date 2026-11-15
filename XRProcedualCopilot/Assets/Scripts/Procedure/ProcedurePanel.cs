@@ -11,6 +11,7 @@ namespace XRProceduralCopilot.Procedure
     public sealed class ProcedurePanel : MonoBehaviour
     {
         [SerializeField] private ProcedureController controller;
+        [SerializeField] private TextAsset tutorialJson;
         [SerializeField] private TMP_Text instructionText;
         [SerializeField] private TMP_Text stepCounter;
         private bool nextHeld, backHeld, repeatHeld;
@@ -31,7 +32,16 @@ namespace XRProceduralCopilot.Procedure
                 enabled = false;
                 return;
             }
+            if (tutorialJson != null && !controller.TryLoadJson(tutorialJson, out string error))
+            {
+                instructionText.text = "Unable to load this tutorial.";
+                stepCounter.text = "TUTORIAL ERROR";
+                Debug.LogError(error, this);
+                enabled = false;
+                return;
+            }
             controller.BeginProcedure();
+            DisplayStep(controller.CurrentStep, controller.CurrentStepNumber);
         }
 
         private void OnDisable()
@@ -41,11 +51,11 @@ namespace XRProceduralCopilot.Procedure
             controller.RepeatRequested -= DisplayStep;
         }
 
-        private void DisplayStep(ProcedureStep step, int index)
+        private void DisplayStep(ProcedureStep step, int stepNumber)
         {
             if (step == null || instructionText == null || stepCounter == null) return;
-            instructionText.text = step.Title + "\n" + step.Instruction;
-            stepCounter.text = $"STEP {index + 1} OF {controller.Procedure.StepCount}";
+            instructionText.text = step.Instruction;
+            stepCounter.text = $"STEP {stepNumber} OF {controller.TotalSteps}";
         }
 
         private void Update()

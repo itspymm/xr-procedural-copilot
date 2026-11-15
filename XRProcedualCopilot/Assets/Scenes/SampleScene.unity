@@ -924,6 +924,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::XRProceduralCopilot.Procedure.ProcedurePanel
   controller: {fileID: 972050899}
+  tutorialJson: {fileID: 4900000, guid: 0f6084487ff2048cf88934a9e89520ce, type: 3}
   instructionText: {fileID: 1375737370}
   stepCounter: {fileID: 773190231}
 --- !u!114 &972050899
@@ -938,7 +939,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1054ca7105c94e3bb5109b38e6e58f45, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::XRProceduralCopilot.Procedure.ProcedureController
-  procedure: {fileID: 11400000, guid: 01197de5b667d41489961886e84e40ef, type: 2}
+  procedure: {fileID: 0}
 --- !u!4 &972050900
 Transform:
   m_ObjectHideFlags: 0
