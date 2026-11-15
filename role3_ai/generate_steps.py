@@ -19,11 +19,16 @@ title = title_match.group(1).strip() if title_match else transcript_path.stem
 
 # Find timestamped instructions
 pattern = r"\[(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\]\s*([\s\S]*?)(?=\[\d{2}:\d{2}|\Z)"
+
 def generate_guidance(instruction):
     text = instruction.lower()
 
-    if "fold" in text:
-        return "Make sure the edges are aligned and crease firmly."
+    if "wing" in text:
+        return "Make both wings approximately the same size."
+    elif "corner" in text:
+        return "Keep both corners symmetrical along the center crease."
+    elif "fold" in text:
+        return "Align the paper edges and press firmly along the crease."
     elif "soap" in text or "rub" in text:
         return "Pay attention to the spaces between your fingers."
     elif "rinse" in text:
