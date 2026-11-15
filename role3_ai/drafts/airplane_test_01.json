@@ -1,0 +1,87 @@
+{
+  "tutorial_id": "airplane_video_transcript_local_ai",
+  "title": "Easy Paper Airplane",
+  "video_url": "",
+  "steps": [
+    {
+      "step_number": 1,
+      "title": "Gather Materials",
+      "instruction": "You need an eight-and-a-half by 11 inch sheet of paper.",
+      "start_time": 0,
+      "end_time": 8,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 2,
+      "title": "Fold in Half",
+      "instruction": "Fold the paper in half lengthwise.",
+      "start_time": 8,
+      "end_time": 15,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 3,
+      "title": "Open and Fold Top",
+      "instruction": "Open the paper and fold the top down, leaving just a little more than an inch at the bottom.",
+      "start_time": 15,
+      "end_time": 22,
+      "additional_guidance": "Needs visual review: clarify 'a little more than an inch'."
+    },
+    {
+      "step_number": 4,
+      "title": "Fold Back",
+      "instruction": "Open that back up and fold down the line you just made.",
+      "start_time": 22,
+      "end_time": 31,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 5,
+      "title": "Fold to Center",
+      "instruction": "Fold the game now fold to the center to make triangles.",
+      "start_time": 31,
+      "end_time": 42,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 6,
+      "title": "Repeat on Other Side",
+      "instruction": "Do both sides.",
+      "start_time": 42,
+      "end_time": 51,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 7,
+      "title": "Tuck Layers",
+      "instruction": "Tuck these layers into the central pocket.",
+      "start_time": 51,
+      "end_time": 60,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 8,
+      "title": "Fold in Half Again",
+      "instruction": "Lay your model flat like so and fold it in half on that center crease.",
+      "start_time": 60,
+      "end_time": 74,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 9,
+      "title": "Fold Wing",
+      "instruction": "Now just fold the wing like so.",
+      "start_time": 74,
+      "end_time": 77,
+      "additional_guidance": ""
+    },
+    {
+      "step_number": 10,
+      "title": "Throw Airplane",
+      "instruction": "And there you go open it up and give that thing a throw.",
+      "start_time": 77,
+      "end_time": 89,
+      "additional_guidance": ""
+    }
+  ]
+}

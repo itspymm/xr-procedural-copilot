@@ -7,6 +7,20 @@
       "dependencies": {},
       "url": "https://packages.unity.com"
     },
+    "com.tlabaltoh.vkeyborad": {
+      "version": "https://github.com/TLabAltoh/TLabVKeyborad.git#2b2755158be4a28d13384f22415782d57b9efab4",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "2b2755158be4a28d13384f22415782d57b9efab4"
+    },
+    "com.tlabaltoh.webview": {
+      "version": "https://github.com/TLabAltoh/TLabWebView.git#3bd84ecb1796312ae871ed94f2501a63e0b25492",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "3bd84ecb1796312ae871ed94f2501a63e0b25492"
+    },
     "com.unity.ai.navigation": {
       "version": "2.0.16",
       "depth": 0,

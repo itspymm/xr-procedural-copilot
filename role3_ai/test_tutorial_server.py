@@ -1,0 +1,91 @@
+import json
+import tempfile
+import threading
+import time
+import unittest
+import urllib.error
+import urllib.request
+from pathlib import Path
+from unittest.mock import patch
+from http.server import ThreadingHTTPServer
+from tutorial_server import State, make_handler, youtube_id, validate_input
+
+
+def tutorial():
+    return {"tutorial_id": "test", "title": "Fold", "video_url": "https://youtu.be/1PVA2nPU60U",
+            "steps": [{"step_number": 1, "title": "Fold", "instruction": "Fold in half.",
+                       "start_time": 8, "end_time": 15, "additional_guidance": ""}]}
+
+
+class ServerTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.state = State(Path(self.temp.name))
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(self.state))
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.base = "http://127.0.0.1:" + str(self.server.server_port)
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join()
+        self.temp.cleanup()
+
+    def request(self, path, data=None, headers=None):
+        request = urllib.request.Request(self.base + path,
+            data=json.dumps(data).encode() if data is not None else None,
+            headers=headers or {})
+        try:
+            with urllib.request.urlopen(request) as response:
+                return response.status, json.load(response)
+        except urllib.error.HTTPError as error:
+            with error:
+                return error.code, json.load(error)
+
+    def test_review_required_and_invalid_replacement_preserves_active(self):
+        body = {"procedure": tutorial(), "duration": 89, "reviewed": False}
+        self.assertEqual(self.request("/api/publish", body)[0], 400)
+        self.assertEqual(self.request("/api/active")[1]["revision"], "")
+        body["reviewed"] = True
+        code, result = self.request("/api/publish", body)
+        self.assertEqual(code, 200)
+        revision = result["revision"]
+        body["procedure"]["steps"][0]["end_time"] = 100
+        self.assertEqual(self.request("/api/publish", body)[0], 400)
+        self.assertEqual(self.request("/api/active")[1]["revision"], revision)
+        self.assertEqual(self.request("/api/ack", {"revision": "old"})[0], 400)
+        self.assertEqual(self.request("/api/ack", {"revision": revision})[0], 200)
+        self.assertEqual(self.request("/api/status")[1]["loaded_revision"], revision)
+        self.assertEqual(State(Path(self.temp.name)).active["revision"], revision)
+
+    def test_generates_draft_without_publishing(self):
+        source = {"title": "Fold", "url": "https://youtu.be/1PVA2nPU60U", "duration": 89,
+                  "transcript": "[00:08] Fold in half.\n[00:15] Open it."}
+        with patch("tutorial_server.generate_procedure", return_value=tutorial()) as generate:
+            code, result = self.request("/api/generate", source)
+            self.assertEqual(code, 202)
+            for _ in range(50):
+                job = self.request("/api/jobs/" + result["job"])[1]
+                if job["status"] != "generating":
+                    break
+                time.sleep(.01)
+            self.assertEqual(job["status"], "ready")
+            self.assertEqual(generate.call_args.args[0], source["transcript"])
+        self.assertEqual(self.request("/api/active")[1]["revision"], "")
+
+    def test_rejects_foreign_browser_origin(self):
+        code, _ = self.request("/api/publish", {}, {"Origin": "https://unrelated.example"})
+        self.assertEqual(code, 403)
+
+    def test_url_and_duration_validation(self):
+        self.assertEqual(youtube_id("https://www.youtube.com/watch?v=1PVA2nPU60U&t=5"), "1PVA2nPU60U")
+        for url in ("http://youtu.be/1PVA2nPU60U", "https://youtube.com.evil.example/watch?v=1PVA2nPU60U", "file:///etc/passwd"):
+            with self.assertRaises(ValueError):
+                youtube_id(url)
+        with self.assertRaises(ValueError):
+            validate_input({"title": "Fold", "url": "https://youtu.be/1PVA2nPU60U", "transcript": "hello", "duration": True})
+
+
+if __name__ == "__main__":
+    unittest.main()

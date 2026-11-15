@@ -1,0 +1,47 @@
+<!doctype html>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<style>html,body{margin:0;width:100%;height:100%;background:#111}#player{width:100%;height:100%}</style>
+</head><body><div id="player"></div><script>
+'use strict';
+let player, ready=false, desired=null, reached=false, seeking=false;
+function notify(message){
+  if(window.tlab)window.tlab.unitySendMessage('__UNITY_OBJECT__','OnYouTubeEvent',message);
+  console.log('[YouTube] '+message);
+}
+window.copilot={
+  segment(start,end,play){
+    desired={start:start,end:end,play:play};reached=false;seeking=true;
+    if(!ready)return;
+    player.pauseVideo();player.seekTo(start,true);
+    if(play)player.playVideo();
+  },
+  pause(){if(desired)desired.play=false;if(ready)player.pauseVideo();},
+  resume(){if(!desired||reached)return;desired.play=true;if(ready)player.playVideo();}
+};
+window.onYouTubeIframeAPIReady=function(){
+ player=new YT.Player('player',{
+  width:'960',height:'540',videoId:'__VIDEO_ID__',
+  playerVars:{playsinline:1,controls:1,fs:0,origin:'__ORIGIN__'},
+  events:{
+   onReady(){ready=true;notify('ready');if(desired)window.copilot.segment(desired.start,desired.end,desired.play);},
+   onError(event){notify('YouTube error '+event.data);},
+   onAutoplayBlocked(){notify('Playback blocked: press left Y to tap the player');},
+   onStateChange(event){notify('state '+event.data);}
+  }
+ });
+};
+setInterval(function(){
+ if(!ready||!desired||reached)return;
+ let t=player.getCurrentTime();
+ if(seeking){
+  if(Math.abs(t-desired.start)<1 || (t>=desired.start&&t<desired.end))seeking=false;
+  else return;
+ }
+ if(t>=desired.end-0.08){player.pauseVideo();reached=true;notify('segment ended');}
+ else if(!desired.play&&player.getPlayerState()===1)player.pauseVideo();
+},100);
+let script=document.createElement('script');script.src='https://www.youtube.com/iframe_api';
+script.onerror=function(){notify('Could not load YouTube API. Check internet access.');};
+document.head.appendChild(script);
+</script></body></html>
