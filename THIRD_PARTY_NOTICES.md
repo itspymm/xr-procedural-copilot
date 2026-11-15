@@ -4,7 +4,7 @@
 
 The root [LICENSE](LICENSE) applies to original contributions owned by the project's copyright holders. Third-party packages, SDKs, imported Unity resources, fonts, and externally sourced media retain their respective terms. Inclusion in this repository does not grant additional redistribution rights.
 
-The team copyright holder and applicable copyright year(s) have not been established; the root license retains the approved placeholders. Contributors must have authority to license their contributions. The repository is not represented as consisting entirely of MIT-licensed material.
+The root license identifies the team's original code as Copyright (c) 2026 Clarity Labs. Contributors must have authority to license their contributions. Third-party material retains its respective licenses; the repository is not represented as consisting entirely of MIT-licensed material.
 
 This inventory was prepared from the repository at `31083f7`, its package manifest and lockfile, installed package license/notice files, the installed Unity template archive, and the installed Gemma model license. It is a source/package audit, not a complete inventory of a shipped APK. A dependency listing does not establish that every component is included in a player build.
 
@@ -253,7 +253,6 @@ Confirm ownership, permission, or another applicable basis before redistributing
 
 ## Outstanding distribution checks
 
-- Resolve the root license's copyright holder and year placeholders with the actual rights holders.
 - Confirm the exact EmojiOne artwork release and applicable terms.
 - Confirm provenance and redistribution rights for externally sourced transcripts and tutorial data.
 - Account for the removed MP4 in historical copies and earlier build artifacts; no Git history rewrite was performed.

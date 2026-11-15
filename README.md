@@ -92,7 +92,7 @@ The companion also searches this Unity installation if `adb` is not on `PATH`:
 
 5. Launch the app from **Unknown Sources** on Quest and allow microphone access.
 
-**The repository's default scene list selects `VideoReview`, not `TutorialInput`.** Choose TutorialInput explicitly for the live companion, chatbot, and YouTube workflow. APKs are local build outputs and are not committed.
+**The repository's default scene list selects `TutorialInput`.** Keep that scene selected for the live companion, chatbot, and YouTube workflow. If a custom Build Profile overrides the scene list, select TutorialInput there too. APKs are local build outputs and are not committed.
 
 The USB companion uses HTTP on loopback. Keep Unity's HTTP access set to **Development Only**. The build hook permits cleartext access to `127.0.0.1` and `localhost` for development builds while keeping other connections on HTTPS.
 
@@ -184,8 +184,8 @@ For a time-limited presentation, generate and review the tutorial ahead of time.
 | `XRProcedualCopilot/` | Unity project |
 | `Assets/Scripts/Procedure/` inside the Unity project | Procedure state, UI, voice routing, playback, and companion receiver |
 | `Assets/Scenes/TutorialInput.unity` | Main live companion demo |
-| `Assets/Scenes/VideoReview.unity` | Bundled MP4 review demo |
-| `Assets/Scenes/LocalAITest.unity` | Bundled AI-draft test scene |
+| `Assets/Scenes/VideoReview.unity` | Legacy MP4 review scene; video asset removed, not the submission entry point |
+| `Assets/Scenes/LocalAITest.unity` | Legacy AI-draft MP4 scene; video asset removed |
 | `Assets/Scenes/YouTubeTest.unity` | Embedded YouTube playback test scene |
 | `Assets/UI/` | UI font assets and font license |
 | `role3_ai/tutorial_server.py` | Local companion HTTP server, publication, chat, and USB recovery |
@@ -246,4 +246,4 @@ Automated tests do not establish instruction accuracy, headset comfort, real spe
 - [Local model generation](role3_ai/LOCAL_AI.md)
 - [Bundled video review](docs/video-tutorial-review.md)
 
-The UI font is distributed with its [SIL Open Font License](XRProcedualCopilot/Assets/UI/Fonts/OFL.txt). Other dependencies retain their respective licenses.
+Original team-authored code is licensed under the [MIT License](LICENSE), Copyright (c) 2026 Clarity Labs. Third-party assets and dependencies retain their respective licenses; see [Third-party notices](THIRD_PARTY_NOTICES.md). The UI font is distributed with its [SIL Open Font License](XRProcedualCopilot/Assets/UI/Fonts/OFL.txt).

@@ -6,8 +6,8 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/VideoReview.unity
-    guid: de26f7b6733d04eb49a6edd35baba2f9
+    path: Assets/Scenes/TutorialInput.unity
+    guid: 9506ec60f7c3e4017bb937567852b405
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
     com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: 15b62fd8520d14d2896dcf85e7872976, type: 2}
