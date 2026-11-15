@@ -4,8 +4,8 @@ using UnityEngine;
 namespace XRProceduralCopilot.Procedure
 {
     /// <summary>
-    /// Owns procedure progress and mode. UI and voice input can call these public methods
-    /// and listen to the events without owning or changing procedure state themselves.
+    /// Owns procedure progress and mode. UI and voice input call its public methods
+    /// and read its properties rather than keeping a separate copy of the procedure state.
     /// </summary>
     public sealed class ProcedureController : MonoBehaviour
     {
@@ -15,30 +15,54 @@ namespace XRProceduralCopilot.Procedure
         private ProcedurePlaybackState state = ProcedurePlaybackState.Paused;
         private ProcedurePlaybackState stateBeforeHelp = ProcedurePlaybackState.Paused;
         private bool isReady;
+        private ProcedureDefinition runtimeOwnedProcedure;
 
+        /// <summary>Raised when the active step or loaded procedure changes. The integer is one-based.</summary>
         public event Action<ProcedureStep, int> StepChanged;
+
+        /// <summary>Raised only when the playback state actually changes.</summary>
         public event Action<ProcedurePlaybackState> StateChanged;
+
+        /// <summary>Raised when the active step is explicitly requested again.</summary>
         public event Action<ProcedureStep, int> RepeatRequested;
 
-        public ProcedureDefinition Procedure => procedure;
-        public int CurrentStepIndex => currentStepIndex;
+        public ProcedureDefinition Procedure => IsReady ? procedure : null;
+        public int CurrentStepIndex => CurrentStep == null ? -1 : currentStepIndex;
         public ProcedureStep CurrentStep => IsReady ? procedure.GetStep(currentStepIndex) : null;
+        public int TotalSteps => IsReady ? procedure.StepCount : 0;
+        public int CurrentStepNumber => CurrentStep == null ? 0 : CurrentStep.StepNumber;
+        public float Progress => TotalSteps == 0 || CurrentStepNumber == 0
+            ? 0f
+            : (float)CurrentStepNumber / TotalSteps;
+        public string TutorialTitle => IsReady ? procedure.ProcedureTitle ?? string.Empty : string.Empty;
+        public string TutorialId => IsReady ? procedure.TutorialId : string.Empty;
+        public string VideoUrl => IsReady ? procedure.VideoUrl : string.Empty;
         public ProcedurePlaybackState State => state;
         public bool IsReady => isReady && procedure != null;
 
         private void Awake()
         {
+            // A controller with no authored asset is valid when another component will load JSON at runtime.
+            if (procedure == null)
+            {
+                currentStepIndex = 0;
+                return;
+            }
+
             string error = null;
-            isReady = procedure != null && procedure.TryValidate(out error);
+            isReady = procedure.TryValidate(out error);
             if (!isReady)
             {
-                Debug.LogError(procedure == null
-                    ? "ProcedureController needs a ProcedureDefinition asset."
-                    : $"Invalid procedure '{procedure.ProcedureTitle}': {error}", this);
+                Debug.LogError($"Invalid procedure '{procedure.ProcedureTitle}': {error}", this);
                 return;
             }
 
             currentStepIndex = 0;
+        }
+
+        private void OnDestroy()
+        {
+            DestroyRuntimeDefinition(runtimeOwnedProcedure);
         }
 
         /// <summary>Starts at the first step when paused; repeated calls while active do not reset progress.</summary>
@@ -50,8 +74,11 @@ namespace XRProceduralCopilot.Procedure
             if (state == ProcedurePlaybackState.Playing)
                 return true;
 
+            bool stepChanged = currentStepIndex != 0;
             currentStepIndex = 0;
-            StepChanged?.Invoke(CurrentStep, currentStepIndex);
+            if (stepChanged)
+                RaiseStepChanged();
+
             SetState(ProcedurePlaybackState.Playing);
             return true;
         }
@@ -65,8 +92,38 @@ namespace XRProceduralCopilot.Procedure
             return true;
         }
 
-        /// <summary>Loads a different authored procedure and resets progress to its first step.</summary>
+        /// <summary>Loads and validates an authored ProcedureDefinition asset.</summary>
         public bool TryLoadProcedure(ProcedureDefinition newProcedure, out string error)
+        {
+            return TryReplaceProcedure(newProcedure, false, out error);
+        }
+
+        /// <summary>Loads JSON text after validating the complete replacement before changing controller state.</summary>
+        public bool TryLoadJson(string json, out string error)
+        {
+            if (!ProcedureJsonLoader.TryCreateDefinition(json, out ProcedureDefinition parsed, out error))
+                return false;
+
+            if (TryReplaceProcedure(parsed, true, out error))
+                return true;
+
+            DestroyRuntimeDefinition(parsed);
+            return false;
+        }
+
+        /// <summary>Loads a bundled JSON TextAsset, suitable for assignment in the Unity Inspector.</summary>
+        public bool TryLoadJson(TextAsset jsonAsset, out string error)
+        {
+            if (jsonAsset == null)
+            {
+                error = "A tutorial JSON TextAsset is required.";
+                return false;
+            }
+
+            return TryLoadJson(jsonAsset.text, out error);
+        }
+
+        private bool TryReplaceProcedure(ProcedureDefinition newProcedure, bool takeOwnership, out string error)
         {
             error = null;
             if (state == ProcedurePlaybackState.Help)
@@ -75,19 +132,39 @@ namespace XRProceduralCopilot.Procedure
                 return false;
             }
 
-            if (newProcedure == null || !newProcedure.TryValidate(out error))
+            if (newProcedure == null)
             {
-                if (newProcedure == null)
-                    error = "A procedure asset is required.";
+                error = "A valid ProcedureDefinition is required.";
                 return false;
             }
 
+            if (!newProcedure.TryValidate(out error))
+                return false;
+
+            bool sameContent = IsReady && procedure.HasSameContent(newProcedure);
+            if (sameContent)
+            {
+                // Identical reloads are no-ops: retain the active step, playback state, and object references.
+                if (takeOwnership && newProcedure != procedure)
+                    DestroyRuntimeDefinition(newProcedure);
+
+                error = null;
+                return true;
+            }
+
+            ProcedureDefinition previousRuntimeProcedure = runtimeOwnedProcedure;
+
             procedure = newProcedure;
             isReady = true;
+            runtimeOwnedProcedure = takeOwnership ? newProcedure : null;
             currentStepIndex = 0;
             stateBeforeHelp = ProcedurePlaybackState.Paused;
             SetState(ProcedurePlaybackState.Paused);
-            StepChanged?.Invoke(CurrentStep, currentStepIndex);
+            RaiseStepChanged();
+
+            if (previousRuntimeProcedure != newProcedure)
+                DestroyRuntimeDefinition(previousRuntimeProcedure);
+
             error = null;
             return true;
         }
@@ -108,7 +185,7 @@ namespace XRProceduralCopilot.Procedure
                 return false;
 
             currentStepIndex++;
-            StepChanged?.Invoke(CurrentStep, currentStepIndex);
+            RaiseStepChanged();
             return true;
         }
 
@@ -118,7 +195,7 @@ namespace XRProceduralCopilot.Procedure
                 return false;
 
             currentStepIndex--;
-            StepChanged?.Invoke(CurrentStep, currentStepIndex);
+            RaiseStepChanged();
             return true;
         }
 
@@ -128,9 +205,8 @@ namespace XRProceduralCopilot.Procedure
             if (!IsReady || state == ProcedurePlaybackState.Help)
                 return false;
 
-            // Repeating is an explicit request to replay the current instruction segment.
             SetState(ProcedurePlaybackState.Playing);
-            RepeatRequested?.Invoke(CurrentStep, currentStepIndex);
+            RepeatRequested?.Invoke(CurrentStep, CurrentStepNumber);
             return true;
         }
 
@@ -144,7 +220,7 @@ namespace XRProceduralCopilot.Procedure
             return true;
         }
 
-        /// <summary>Returns from help without changing the step; the video adapter resumes its saved position.</summary>
+        /// <summary>Returns from help without changing the step; the synchronizer restores its saved playhead.</summary>
         public bool ResumeProcedure()
         {
             if (!IsReady || state != ProcedurePlaybackState.Help)
@@ -154,6 +230,11 @@ namespace XRProceduralCopilot.Procedure
             return true;
         }
 
+        private void RaiseStepChanged()
+        {
+            StepChanged?.Invoke(CurrentStep, CurrentStepNumber);
+        }
+
         private void SetState(ProcedurePlaybackState newState)
         {
             if (state == newState)
@@ -161,6 +242,17 @@ namespace XRProceduralCopilot.Procedure
 
             state = newState;
             StateChanged?.Invoke(state);
+        }
+
+        private static void DestroyRuntimeDefinition(ProcedureDefinition definition)
+        {
+            if (definition == null)
+                return;
+
+            if (Application.isPlaying)
+                Destroy(definition);
+            else
+                DestroyImmediate(definition);
         }
     }
 }
